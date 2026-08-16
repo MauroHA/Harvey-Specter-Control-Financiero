@@ -173,9 +173,7 @@
 
         <label for="metodoPago">Método de pago</label>
         <select id="metodoPago" required>
-          <option value="Efectivo">Efectivo</option>
-          <option value="Transferencia">Transferencia</option>
-          <option value="Débito">Tarjeta débito</option>
+          <option value="Efectivo/Transferencia">Efectivo o transferencia</option>
           <option value="Bancolombia">Tarjeta crédito Bancolombia</option>
           <option value="RappiCard">Tarjeta crédito RappiCard</option>
         </select>
@@ -255,12 +253,12 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwG4ygk5GyH21Zi
 
 const ETIQUETAS_GASTO = [
   'Crédito vivienda','Mercado','Servicio de internet','Transporte','Salud',
-  'Cuidado personal','Actividad física','Restaurantes','Planes y ocio','Suscripciones',
-  'Deudas y obligaciones','Apoyo familiar','Proyecto van','Imprevistos','Otros',
+  'Cuidado personal','Actividad física','Restaurantes','Ropa y zapatos','Planes y ocio','Suscripciones',
+  'Deudas y obligaciones','Yo presto','Me prestan','Apoyo familiar','Transpormax','Imprevistos','Otros',
   'Servicio de energía','Servicio de acueducto','Administración edificio',
   'Crédito vehículo','Jazz','Servicio de aseo','Terapia'
 ];
-const ETIQUETAS_INGRESO = ['Salario','Freelance','Ventas','Otros'];
+const ETIQUETAS_INGRESO = ['Salario','BLÜM','Transpormax','Freelance','Ventas','Yo presto','Me prestan','Otros'];
 
 let tipoActual = 'Ingreso';
 let ultimoResumen = null;
@@ -368,7 +366,6 @@ document.getElementById('formMovimiento').addEventListener('submit', async (ev) 
     document.getElementById('avisoPresupuesto').className = 'aviso-alerta';
 
     await cargarResumen();
-    await cargarTarjetas();
   } catch (err) {
     alert('No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.');
     console.error(err);
@@ -432,6 +429,9 @@ async function cargarResumen() {
       ? data.flujo.slice().reverse().map(renderFilaFlujo).join('')
       : '<div class="estado-vacio">Sin movimientos aún este mes.</div>';
 
+    // La respuesta del resumen ya trae las tarjetas incluidas — evitamos pedirlas aparte
+    renderTarjetas(data.tarjetas);
+
     evaluarAlertaPresupuesto();
   } catch (err) {
     contEtiquetas.innerHTML = '<div class="estado-vacio">No se pudo cargar el resumen. Revisa la URL de Apps Script.</div>';
@@ -481,13 +481,10 @@ function renderFilaFlujo(m) {
     </div>`;
 }
 
-// ---------- Cargar tarjetas ----------
-async function cargarTarjetas() {
+// ---------- Tarjetas: solo renderiza (los datos ya vienen dentro del resumen) ----------
+function renderTarjetas(data) {
   const cont = document.getElementById('listaTarjetas');
   try {
-    const res = await fetch(`${APPS_SCRIPT_URL}?action=tarjetas`);
-    const data = await res.json();
-
     const rp = data.resumenPersonal;
     document.getElementById('cupoPersonalTotal').textContent = fmt(rp.cupoTotal);
     document.getElementById('saldoPersonalTotal').textContent = fmt(rp.saldoTotal);
@@ -512,7 +509,7 @@ async function cargarTarjetas() {
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ accion: 'actualizarTarjeta', entidad: t.entidad, nuevoSaldo })
           });
-          await cargarTarjetas();
+          await cargarResumen();
         });
       }
 
@@ -535,7 +532,6 @@ async function cargarTarjetas() {
               fecha: new Date().toISOString().slice(0, 10)
             })
           });
-          await cargarTarjetas();
           await cargarResumen();
         });
       }
@@ -574,7 +570,6 @@ function renderTarjeta(t) {
 // ---------- Inicio ----------
 poblarEtiquetas();
 cargarResumen();
-cargarTarjetas();
 </script>
 </body>
 </html>
