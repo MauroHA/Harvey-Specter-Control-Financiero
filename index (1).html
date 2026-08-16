@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Libro Mayor — Control Financiero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #F6F4EF;
+    --paper-line: #E3DFD5;
+    --ink: #1B2430;
+    --ink-soft: #5B6270;
+    --verde: #2F6F5E;
+    --verde-suave: #E6EFEA;
+    --gasto: #935F45;
+    --gasto-suave: #F1E7DF;
+    --ambar: #C68A2E;
+    --ambar-suave: #FBF0DC;
+    --rojo: #C1352B;
+    --rojo-suave: #F8E4E1;
+    --surface: #FFFFFF;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;padding-bottom:48px;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:20px 16px 8px;}
+
+  header{padding:4px 4px 18px;}
+  header .kicker{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);}
+  header h1{font-family:'Fraunces',serif;font-weight:600;font-size:26px;margin:4px 0 0;letter-spacing:-.01em;}
+
+  nav.tabs{display:flex;gap:6px;margin-bottom:18px;border-bottom:1px solid var(--paper-line);}
+  nav.tabs button{
+    flex:1;background:none;border:none;padding:10px 2px;
+    font-family:'Inter',sans-serif;font-weight:600;font-size:13px;
+    color:var(--ink-soft);cursor:pointer;border-bottom:2px solid transparent;
+  }
+  nav.tabs button.activo{color:var(--ink);border-color:var(--ink);}
+
+  section.panel{display:none;}
+  section.panel.activo{display:block;}
+
+  .card{background:var(--surface);border:1px solid var(--paper-line);border-radius:10px;padding:18px;margin-bottom:16px;}
+
+  .toggle-tipo{display:flex;gap:10px;margin-bottom:16px;}
+  .toggle-tipo button{
+    flex:1;padding:14px 8px;border-radius:8px;
+    font-family:'Space Mono',monospace;font-weight:700;font-size:13px;
+    letter-spacing:.08em;text-transform:uppercase;
+    border:2px dashed var(--paper-line);background:var(--paper);color:var(--ink-soft);cursor:pointer;
+  }
+  .toggle-tipo button[data-tipo="Ingreso"].activo{border-color:var(--verde);background:var(--verde-suave);color:var(--verde);}
+  .toggle-tipo button[data-tipo="Gasto"].activo{border-color:var(--gasto);background:var(--gasto-suave);color:var(--gasto);}
+
+  label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.05em;}
+  label:first-of-type{margin-top:0;}
+  input,select{width:100%;padding:12px;border:1px solid var(--paper-line);border-radius:8px;font-family:'Inter',sans-serif;font-size:15px;background:var(--paper);color:var(--ink);}
+  input:focus,select:focus{outline:2px solid var(--ink);outline-offset:1px;}
+  input[type="number"]{font-family:'Space Mono',monospace;font-weight:700;font-size:18px;}
+
+  .btn-guardar{margin-top:20px;width:100%;padding:15px;border:none;border-radius:8px;background:var(--ink);color:var(--paper);font-weight:700;font-size:15px;cursor:pointer;}
+  .btn-guardar:disabled{opacity:.5;}
+
+  #confirmacion{display:none;text-align:center;padding:10px 0 4px;font-family:'Space Mono',monospace;font-weight:700;color:var(--verde);font-size:14px;}
+
+  .kicker{font-family:'Space Mono',monospace;font-size:11px;color:var(--ink-soft);letter-spacing:.1em;text-transform:uppercase;}
+  .resumen-cifras{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;}
+  .cifra{flex:1;min-width:90px;text-align:left;}
+  .cifra .label{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;}
+  .cifra .valor{font-family:'Space Mono',monospace;font-weight:700;font-size:16px;margin-top:2px;}
+  .cifra.ingreso .valor{color:var(--verde);}
+  .cifra.gasto .valor{color:var(--gasto);}
+  .valor.positivo{color:var(--verde);}
+  .valor.negativo{color:var(--rojo);}
+
+  h3.subtitulo{font-family:'Fraunces',serif;font-weight:600;font-size:16px;margin:22px 0 10px;}
+  h3.subtitulo:first-child{margin-top:0;}
+
+  .fila-etiqueta{margin-bottom:16px;}
+  .fila-etiqueta .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .fila-etiqueta .nombre{font-size:13.5px;font-weight:600;}
+  .quincena-bloque{margin-bottom:5px;}
+  .quincena-bloque .qlabel{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--ink-soft);display:flex;justify-content:space-between;margin-bottom:3px;}
+  .barra-track{height:7px;background:var(--paper);border:1px solid var(--paper-line);border-radius:5px;overflow:hidden;}
+  .barra-fill{height:100%;border-radius:5px;}
+  .barra-fill.verde{background:var(--verde);}
+  .barra-fill.amarillo{background:var(--ambar);}
+  .barra-fill.rojo{background:var(--rojo);}
+  .barra-fill.sin_presupuesto{background:var(--ink-soft);}
+
+  .sello{display:inline-block;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:4px;border:1px dashed currentColor;transform:rotate(-2deg);white-space:nowrap;}
+  .sello.verde{color:var(--verde);background:var(--verde-suave);}
+  .sello.amarillo{color:var(--ambar);background:var(--ambar-suave);}
+  .sello.rojo{color:var(--rojo);background:var(--rojo-suave);}
+  .sello.sin_presupuesto{color:var(--ink-soft);background:var(--paper);}
+
+  .aviso-alerta{display:none;margin-top:4px;padding:12px 14px;border-radius:8px;font-size:13px;font-weight:600;line-height:1.4;}
+  .aviso-alerta.mostrar{display:block;}
+  .aviso-alerta.amarillo{background:var(--ambar-suave);color:#8a5f1c;border:1px solid var(--ambar);}
+  .aviso-alerta.rojo{background:var(--rojo-suave);color:#8a2620;border:1px solid var(--rojo);}
+
+  .tarjeta-item{border-bottom:1px solid var(--paper-line);padding:14px 0;}
+  .tarjeta-item:last-child{border-bottom:none;}
+  .tarjeta-item .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .tarjeta-item .entidad{font-family:'Fraunces',serif;font-weight:600;font-size:15px;}
+  .tarjeta-detalle{font-family:'Space Mono',monospace;font-size:11.5px;color:var(--ink-soft);margin-top:6px;}
+  .tarjeta-update{display:flex;gap:8px;margin-top:10px;}
+  .tarjeta-update input{flex:1;font-size:13px;padding:9px;}
+  .tarjeta-update button{padding:9px 14px;border:1px solid var(--ink);background:var(--paper);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;}
+  .tarjeta-update.abono button{background:var(--verde);color:#fff;border-color:var(--verde);}
+  .tarjeta-update-label{font-size:10px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;margin-top:10px;}
+
+  .saldo-inicial-row{display:flex;gap:8px;align-items:flex-end;margin-top:6px;}
+  .saldo-inicial-row input{flex:1;}
+  .saldo-inicial-row button{padding:11px 14px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
+
+  .flujo-lista{max-height:340px;overflow-y:auto;margin-top:12px;border-top:1px solid var(--paper-line);}
+  .flujo-fila{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--paper-line);font-size:12.5px;}
+  .flujo-fila .izq{display:flex;flex-direction:column;}
+  .flujo-fila .etiqueta-mov{font-weight:600;}
+  .flujo-fila .fecha-mov{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--ink-soft);}
+  .flujo-fila .der{text-align:right;}
+  .flujo-fila .monto-mov{font-family:'Space Mono',monospace;font-weight:700;}
+  .flujo-fila .monto-mov.Ingreso{color:var(--verde);}
+  .flujo-fila .monto-mov.Gasto{color:var(--gasto);}
+  .flujo-fila .saldo-mov{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--ink-soft);}
+
+  .estado-vacio{text-align:center;color:var(--ink-soft);font-size:13px;padding:20px 0;}
+  .footer-nota{text-align:center;font-size:11px;color:var(--ink-soft);margin-top:20px;}
+  .meta-nota{font-size:11.5px;color:var(--ink-soft);margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">Libro mayor personal · <span id="mesTexto">—</span></div>
+    <h1>Control Financiero</h1>
+  </header>
+
+  <nav class="tabs">
+    <button data-panel="registrar" class="activo">Registrar</button>
+    <button data-panel="caja">Caja</button>
+    <button data-panel="tarjetas">Tarjetas</button>
+  </nav>
+
+  <!-- ================= PANEL: REGISTRAR ================= -->
+  <section class="panel activo" id="panel-registrar">
+
+    <div class="card">
+      <div class="toggle-tipo">
+        <button type="button" data-tipo="Ingreso" class="activo">Ingreso</button>
+        <button type="button" data-tipo="Gasto">Gasto</button>
+      </div>
+
+      <form id="formMovimiento">
+        <label for="monto">Monto ($)</label>
+        <input type="number" id="monto" inputmode="decimal" placeholder="0" required min="0" step="1">
+
+        <label for="etiqueta">Categoría</label>
+        <select id="etiqueta" required></select>
+
+        <label for="descripcion">Descripción (opcional)</label>
+        <input type="text" id="descripcion" placeholder="Ej. Mercado de la quincena">
+
+        <label for="fecha">Fecha</label>
+        <input type="date" id="fecha" required>
+
+        <label for="metodoPago">Método de pago</label>
+        <select id="metodoPago" required>
+          <option value="Efectivo/Transferencia">Efectivo o transferencia</option>
+          <option value="Bancolombia">Tarjeta crédito Bancolombia</option>
+          <option value="RappiCard">Tarjeta crédito RappiCard</option>
+        </select>
+
+        <div class="aviso-alerta" id="avisoPresupuesto"></div>
+
+        <button type="submit" class="btn-guardar" id="btnGuardar">Guardar movimiento</button>
+      </form>
+      <div id="confirmacion">¡Guardado!</div>
+    </div>
+
+    <div class="card">
+      <div class="kicker">Resumen del mes</div>
+      <div class="resumen-cifras">
+        <div class="cifra ingreso"><div class="label">Ingresos</div><div class="valor" id="totalIngresos">$0</div></div>
+        <div class="cifra gasto"><div class="label">Gastos</div><div class="valor" id="totalGastos">$0</div></div>
+        <div class="cifra"><div class="label">Balance</div><div class="valor" id="totalBalance">$0</div></div>
+      </div>
+
+      <h3 class="subtitulo">Gastos por etiqueta · 1ra y 2da quincena</h3>
+      <div id="listaEtiquetas"><div class="estado-vacio">Cargando…</div></div>
+    </div>
+  </section>
+
+  <!-- ================= PANEL: CAJA (flujo de caja) ================= -->
+  <section class="panel" id="panel-caja">
+    <div class="card">
+      <div class="kicker">Saldo inicial del mes</div>
+      <div class="saldo-inicial-row">
+        <input type="number" id="inputSaldoInicial" placeholder="Saldo real en caja/banco al iniciar el mes">
+        <button type="button" id="btnGuardarSaldoInicial">Guardar</button>
+      </div>
+      <div class="meta-nota">Actualízalo al comenzar cada mes con tu saldo real, para conciliar contra el saldo teórico.</div>
+    </div>
+
+    <div class="card">
+      <div class="kicker">Flujo de caja del mes</div>
+      <div class="resumen-cifras">
+        <div class="cifra"><div class="label">Saldo inicial</div><div class="valor" id="cajaSaldoInicial">$0</div></div>
+        <div class="cifra ingreso"><div class="label">+ Ingresos</div><div class="valor" id="cajaIngresos">$0</div></div>
+        <div class="cifra gasto"><div class="label">− Gastos</div><div class="valor" id="cajaGastos">$0</div></div>
+      </div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--paper-line);">
+        <div class="label" style="font-size:11px;color:var(--ink-soft);text-transform:uppercase;">Saldo teórico actual</div>
+        <div class="valor" id="cajaSaldoTeorico" style="font-size:24px;margin-top:4px;">$0</div>
+      </div>
+
+      <h3 class="subtitulo">Movimientos (con saldo acumulado)</h3>
+      <div class="flujo-lista" id="listaFlujo"><div class="estado-vacio">Cargando…</div></div>
+    </div>
+  </section>
+
+  <!-- ================= PANEL: TARJETAS ================= -->
+  <section class="panel" id="panel-tarjetas">
+    <div class="card">
+      <div class="kicker">Utilización personal total</div>
+      <div class="resumen-cifras">
+        <div class="cifra"><div class="label">Cupo</div><div class="valor" id="cupoPersonalTotal">$0</div></div>
+        <div class="cifra"><div class="label">Saldo</div><div class="valor" id="saldoPersonalTotal">$0</div></div>
+        <div class="cifra"><div class="label">Utilización</div><div class="valor" id="utilizacionPersonal">0%</div></div>
+      </div>
+      <div class="barra-track" style="margin-top:12px;"><div class="barra-fill" id="barraPersonal"></div></div>
+      <div class="meta-nota">Meta para vida crediticia sana: mantener la utilización total bajo 20%.</div>
+    </div>
+
+    <div class="card">
+      <h3 class="subtitulo">Tus tarjetas</h3>
+      <div id="listaTarjetas"><div class="estado-vacio">Cargando…</div></div>
+    </div>
+  </section>
+
+  <div class="footer-nota">Datos guardados en tu Google Sheet · uso personal</div>
+</div>
+
+<script>
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwG4ygk5GyH21Zizx4zwoeJ8uWGUCzX7FF9X9BV-nbVS82n08rs5dLFtJrHdu2HAKaW/exec';
+
+const ETIQUETAS_GASTO = [
+  'Crédito vivienda','Mercado','Servicio de internet','Transporte','Salud',
+  'Cuidado personal','Actividad física','Restaurantes','Ropa y zapatos','Planes y ocio','Suscripciones',
+  'Deudas y obligaciones','Yo presto','Me prestan','Apoyo familiar','Transpormax','Imprevistos','Otros',
+  'Servicio de energía','Servicio de acueducto','Administración edificio',
+  'Crédito vehículo','Jazz','Servicio de aseo','Terapia'
+];
+const ETIQUETAS_INGRESO = ['Salario','BLÜM','Transpormax','Freelance','Ventas','Yo presto','Me prestan','Otros'];
+
+let tipoActual = 'Ingreso';
+let ultimoResumen = null;
+
+const fmt = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
+const quincenaDe = (fechaStr) => {
+  const dia = Number(fechaStr.split('-')[2]);
+  return dia <= 15 ? 1 : 2;
+};
+
+// ---------- Tabs ----------
+document.querySelectorAll('nav.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('nav.tabs button').forEach(b => b.classList.remove('activo'));
+    document.querySelectorAll('section.panel').forEach(p => p.classList.remove('activo'));
+    btn.classList.add('activo');
+    document.getElementById('panel-' + btn.dataset.panel).classList.add('activo');
+  });
+});
+
+// ---------- Toggle Ingreso/Gasto ----------
+document.querySelectorAll('.toggle-tipo button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.toggle-tipo button').forEach(b => b.classList.remove('activo'));
+    btn.classList.add('activo');
+    tipoActual = btn.dataset.tipo;
+    poblarEtiquetas();
+    evaluarAlertaPresupuesto();
+  });
+});
+
+function poblarEtiquetas() {
+  const select = document.getElementById('etiqueta');
+  const lista = tipoActual === 'Ingreso' ? ETIQUETAS_INGRESO : ETIQUETAS_GASTO;
+  select.innerHTML = lista.map(e => `<option value="${e}">${e}</option>`).join('');
+}
+
+document.getElementById('fecha').value = new Date().toISOString().slice(0, 10);
+
+document.getElementById('monto').addEventListener('input', evaluarAlertaPresupuesto);
+document.getElementById('etiqueta').addEventListener('change', evaluarAlertaPresupuesto);
+document.getElementById('fecha').addEventListener('change', evaluarAlertaPresupuesto);
+
+function evaluarAlertaPresupuesto() {
+  const aviso = document.getElementById('avisoPresupuesto');
+  aviso.className = 'aviso-alerta';
+  aviso.textContent = '';
+
+  if (tipoActual !== 'Gasto' || !ultimoResumen) return;
+
+  const etiqueta = document.getElementById('etiqueta').value;
+  const montoNuevo = Number(document.getElementById('monto').value) || 0;
+  const fechaVal = document.getElementById('fecha').value;
+  if (montoNuevo <= 0 || !fechaVal) return;
+
+  const q = quincenaDe(fechaVal);
+  const fila = ultimoResumen.desglose.find(d => d.etiqueta === etiqueta);
+  if (!fila) return;
+
+  const presupuesto = q === 1 ? fila.presupuestoQ1 : fila.presupuestoQ2;
+  const gastado = q === 1 ? fila.gastoQ1 : fila.gastoQ2;
+  if (!presupuesto) return;
+
+  const proyectado = gastado + montoNuevo;
+  const pct = (proyectado / presupuesto) * 100;
+  const etiquetaQ = q === 1 ? '1ra quincena' : '2da quincena';
+
+  if (pct >= 100) {
+    aviso.classList.add('rojo', 'mostrar');
+    aviso.textContent = `⚠ Este movimiento SUPERA el presupuesto de "${etiqueta}" para la ${etiquetaQ} (${fmt(proyectado)} de ${fmt(presupuesto)}).`;
+  } else if (pct >= 80) {
+    aviso.classList.add('amarillo', 'mostrar');
+    aviso.textContent = `Atención: con este movimiento llegarías al ${Math.round(pct)}% del presupuesto de "${etiqueta}" en la ${etiquetaQ}.`;
+  }
+}
+
+// ---------- Enviar movimiento ----------
+document.getElementById('formMovimiento').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const btn = document.getElementById('btnGuardar');
+  btn.disabled = true;
+  btn.textContent = 'Guardando…';
+
+  const payload = {
+    tipo: tipoActual,
+    etiqueta: document.getElementById('etiqueta').value,
+    descripcion: document.getElementById('descripcion').value,
+    valor: document.getElementById('monto').value,
+    fecha: document.getElementById('fecha').value,
+    metodoPago: document.getElementById('metodoPago').value
+  };
+
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+
+    document.getElementById('confirmacion').style.display = 'block';
+    setTimeout(() => { document.getElementById('confirmacion').style.display = 'none'; }, 2200);
+
+    document.getElementById('formMovimiento').reset();
+    document.getElementById('fecha').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('avisoPresupuesto').className = 'aviso-alerta';
+
+    await cargarResumen();
+  } catch (err) {
+    alert('No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.');
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Guardar movimiento';
+  }
+});
+
+// ---------- Guardar saldo inicial ----------
+document.getElementById('btnGuardarSaldoInicial').addEventListener('click', async () => {
+  const input = document.getElementById('inputSaldoInicial');
+  if (input.value === '') return;
+  const btn = document.getElementById('btnGuardarSaldoInicial');
+  btn.disabled = true; btn.textContent = '...';
+
+  await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ accion: 'actualizarSaldoInicial', mes: ultimoResumen.mes, saldoInicial: input.value })
+  });
+
+  btn.disabled = false; btn.textContent = 'Guardar';
+  await cargarResumen();
+});
+
+// ---------- Cargar resumen mensual ----------
+async function cargarResumen() {
+  const contEtiquetas = document.getElementById('listaEtiquetas');
+  const contFlujo = document.getElementById('listaFlujo');
+  try {
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=resumen`);
+    const data = await res.json();
+    ultimoResumen = data;
+
+    const nombreMes = new Date(data.mes + '-01T00:00:00').toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+    document.getElementById('mesTexto').textContent = nombreMes;
+
+    document.getElementById('totalIngresos').textContent = fmt(data.ingresos);
+    document.getElementById('totalGastos').textContent = fmt(data.gastos);
+    const balanceEl = document.getElementById('totalBalance');
+    balanceEl.textContent = fmt(data.balance);
+    balanceEl.classList.remove('positivo', 'negativo');
+    balanceEl.classList.add(data.balance >= 0 ? 'positivo' : 'negativo');
+
+    contEtiquetas.innerHTML = data.desglose.length
+      ? data.desglose.map(renderFilaEtiqueta).join('')
+      : '<div class="estado-vacio">Aún no hay gastos este mes.</div>';
+
+    // Caja
+    document.getElementById('cajaSaldoInicial').textContent = fmt(data.saldoInicial);
+    document.getElementById('inputSaldoInicial').value = data.saldoInicial || '';
+    document.getElementById('cajaIngresos').textContent = fmt(data.ingresos);
+    document.getElementById('cajaGastos').textContent = fmt(data.gastos);
+    const saldoTeoEl = document.getElementById('cajaSaldoTeorico');
+    saldoTeoEl.textContent = fmt(data.saldoTeoricoActual);
+    saldoTeoEl.classList.remove('positivo', 'negativo');
+    saldoTeoEl.classList.add(data.saldoTeoricoActual >= 0 ? 'positivo' : 'negativo');
+
+    contFlujo.innerHTML = data.flujo.length
+      ? data.flujo.slice().reverse().map(renderFilaFlujo).join('')
+      : '<div class="estado-vacio">Sin movimientos aún este mes.</div>';
+
+    // La respuesta del resumen ya trae las tarjetas incluidas — evitamos pedirlas aparte
+    renderTarjetas(data.tarjetas);
+
+    evaluarAlertaPresupuesto();
+  } catch (err) {
+    contEtiquetas.innerHTML = '<div class="estado-vacio">No se pudo cargar el resumen. Revisa la URL de Apps Script.</div>';
+    console.error(err);
+  }
+}
+
+function renderFilaEtiqueta(d) {
+  const estadoTexto = { verde: 'Dentro', amarillo: 'Alerta', rojo: 'Superado', sin_presupuesto: 'Libre' };
+  const estadoPeor = (d.estadoQ1 === 'rojo' || d.estadoQ2 === 'rojo') ? 'rojo'
+    : (d.estadoQ1 === 'amarillo' || d.estadoQ2 === 'amarillo') ? 'amarillo'
+    : (d.presupuestoMes > 0 ? 'verde' : 'sin_presupuesto');
+
+  function bloqueQ(label, gastado, presupuesto, pct, estado) {
+    const montos = presupuesto > 0 ? `${fmt(gastado)} / ${fmt(presupuesto)}` : fmt(gastado);
+    const ancho = presupuesto > 0 ? Math.min(pct, 100) : 8;
+    return `
+      <div class="quincena-bloque">
+        <div class="qlabel"><span>${label}</span><span>${montos}</span></div>
+        <div class="barra-track"><div class="barra-fill ${estado}" style="width:${ancho}%;"></div></div>
+      </div>`;
+  }
+
+  return `
+    <div class="fila-etiqueta">
+      <div class="top">
+        <span class="nombre">${d.etiqueta}</span>
+        <span class="sello ${estadoPeor}">${estadoTexto[estadoPeor]}</span>
+      </div>
+      ${bloqueQ('1ra quincena', d.gastoQ1, d.presupuestoQ1, d.pctQ1, d.estadoQ1)}
+      ${bloqueQ('2da quincena', d.gastoQ2, d.presupuestoQ2, d.pctQ2, d.estadoQ2)}
+    </div>`;
+}
+
+function renderFilaFlujo(m) {
+  const signo = m.tipo === 'Ingreso' ? '+' : '−';
+  return `
+    <div class="flujo-fila">
+      <div class="izq">
+        <span class="etiqueta-mov">${m.etiqueta}${m.descripcion ? ' · ' + m.descripcion : ''}</span>
+        <span class="fecha-mov">${m.fecha}</span>
+      </div>
+      <div class="der">
+        <div class="monto-mov ${m.tipo}">${signo} ${fmt(m.valor)}</div>
+        <div class="saldo-mov">saldo: ${fmt(m.saldoAcumulado)}</div>
+      </div>
+    </div>`;
+}
+
+// ---------- Tarjetas: solo renderiza (los datos ya vienen dentro del resumen) ----------
+function renderTarjetas(data) {
+  const cont = document.getElementById('listaTarjetas');
+  try {
+    const rp = data.resumenPersonal;
+    document.getElementById('cupoPersonalTotal').textContent = fmt(rp.cupoTotal);
+    document.getElementById('saldoPersonalTotal').textContent = fmt(rp.saldoTotal);
+    document.getElementById('utilizacionPersonal').textContent = rp.utilizacion + '%';
+    const barraPersonal = document.getElementById('barraPersonal');
+    barraPersonal.style.width = Math.min(rp.utilizacion, 100) + '%';
+    barraPersonal.className = 'barra-fill ' + rp.estado;
+
+    cont.innerHTML = data.tarjetas.map(renderTarjeta).join('');
+
+    data.tarjetas.forEach(t => {
+      const btnActualizar = document.getElementById('btn-tarjeta-' + slug(t.entidad));
+      if (btnActualizar) {
+        btnActualizar.addEventListener('click', async () => {
+          const input = document.getElementById('input-tarjeta-' + slug(t.entidad));
+          const nuevoSaldo = input.value;
+          if (nuevoSaldo === '') return;
+          btnActualizar.disabled = true;
+          btnActualizar.textContent = '...';
+          await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ accion: 'actualizarTarjeta', entidad: t.entidad, nuevoSaldo })
+          });
+          await cargarResumen();
+        });
+      }
+
+      const btnAbono = document.getElementById('btn-abono-' + slug(t.entidad));
+      if (btnAbono) {
+        btnAbono.addEventListener('click', async () => {
+          const input = document.getElementById('input-abono-' + slug(t.entidad));
+          const monto = input.value;
+          if (monto === '' || Number(monto) <= 0) return;
+          btnAbono.disabled = true;
+          btnAbono.textContent = '...';
+          await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              accion: 'registrarAbono',
+              entidad: t.entidad,
+              monto: monto,
+              metodoPago: 'Transferencia',
+              fecha: new Date().toISOString().slice(0, 10)
+            })
+          });
+          await cargarResumen();
+        });
+      }
+    });
+  } catch (err) {
+    cont.innerHTML = '<div class="estado-vacio">No se pudo cargar el módulo de tarjetas.</div>';
+    console.error(err);
+  }
+}
+
+function slug(str) { return str.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+
+function renderTarjeta(t) {
+  const etiquetaEstado = { verde: 'Sano', amarillo: 'Vigilar', rojo: 'Alto' }[t.estado];
+  return `
+    <div class="tarjeta-item">
+      <div class="top">
+        <span class="entidad">${t.entidad}${t.personal ? '' : ' <span style="font-size:10px;color:var(--ink-soft);">(no personal)</span>'}</span>
+        <span class="sello ${t.estado}">${t.utilizacion}% · ${etiquetaEstado}</span>
+      </div>
+      <div class="barra-track"><div class="barra-fill ${t.estado}" style="width:${Math.min(t.utilizacion, 100)}%;"></div></div>
+      <div class="tarjeta-detalle">Cupo ${fmt(t.cupo)} · Saldo ${fmt(t.saldo)} · Disponible ${fmt(t.disponible)} · Pago límite día ${t.diaLimitePago || '—'}</div>
+      <div class="tarjeta-update-label">Registrar abono (pago a la tarjeta)</div>
+      <div class="tarjeta-update abono">
+        <input type="number" id="input-abono-${slug(t.entidad)}" placeholder="Monto que abonaste">
+        <button type="button" id="btn-abono-${slug(t.entidad)}">Registrar abono</button>
+      </div>
+      <div class="tarjeta-update-label">Corregir saldo manualmente</div>
+      <div class="tarjeta-update">
+        <input type="number" id="input-tarjeta-${slug(t.entidad)}" placeholder="Nuevo saldo actual">
+        <button type="button" id="btn-tarjeta-${slug(t.entidad)}">Actualizar</button>
+      </div>
+    </div>`;
+}
+
+// ---------- Inicio ----------
+poblarEtiquetas();
+cargarResumen();
+</script>
+</body>
+</html>
