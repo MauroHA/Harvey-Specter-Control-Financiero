@@ -193,7 +193,7 @@
         <div class="cifra"><div class="label">Balance</div><div class="valor" id="totalBalance">$0</div></div>
       </div>
 
-      <h3 class="subtitulo">Gastos por etiqueta · 1ra y 2da quincena</h3>
+      <h3 class="subtitulo">Último registro</h3>
       <div id="listaEtiquetas"><div class="estado-vacio">Cargando…</div></div>
     </div>
   </section>
@@ -290,10 +290,30 @@ document.querySelectorAll('.toggle-tipo button').forEach(btn => {
   });
 });
 
+// Las listas vienen de la hoja Presupuesto (vía Apps Script). Las constantes de arriba son solo respaldo.
+let listaGasto = ETIQUETAS_GASTO;
+let listaIngreso = ETIQUETAS_INGRESO;
+try {
+  const c = JSON.parse(localStorage.getItem('categoriasCache') || 'null');
+  if (c && c.gasto && c.gasto.length) listaGasto = c.gasto;
+  if (c && c.ingreso && c.ingreso.length) listaIngreso = c.ingreso;
+} catch (e) {}
+
+function aplicarCategorias(cat) {
+  if (!cat) return;
+  if (cat.gasto && cat.gasto.length) listaGasto = cat.gasto;
+  if (cat.ingreso && cat.ingreso.length) listaIngreso = cat.ingreso;
+  try { localStorage.setItem('categoriasCache', JSON.stringify({ gasto: listaGasto, ingreso: listaIngreso })); } catch (e) {}
+  poblarEtiquetas();
+}
+
 function poblarEtiquetas() {
   const select = document.getElementById('etiqueta');
-  const lista = tipoActual === 'Ingreso' ? ETIQUETAS_INGRESO : ETIQUETAS_GASTO;
-  select.innerHTML = lista.map(e => `<option value="${e}">${e}</option>`).join('');
+  const previa = select.value;
+  const lista = tipoActual === 'Ingreso' ? listaIngreso : listaGasto;
+  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  select.innerHTML = lista.map(e => `<option value="${esc(e)}">${esc(e)}</option>`).join('');
+  if (previa && lista.includes(previa)) select.value = previa;
 }
 
 document.getElementById('fecha').value = new Date().toISOString().slice(0, 10);
@@ -411,9 +431,9 @@ async function cargarResumen() {
     balanceEl.classList.remove('positivo', 'negativo');
     balanceEl.classList.add(data.balance >= 0 ? 'positivo' : 'negativo');
 
-    contEtiquetas.innerHTML = data.desglose.length
-      ? data.desglose.map(renderFilaEtiqueta).join('')
-      : '<div class="estado-vacio">Aún no hay gastos este mes.</div>';
+    contEtiquetas.innerHTML = (data.ultimos && data.ultimos.length)
+      ? data.ultimos.map(renderUltimo).join('')
+      : '<div class="estado-vacio">Aún no hay registros.</div>';
 
     // Caja
     document.getElementById('cajaSaldoInicial').textContent = fmt(data.saldoInicial);
@@ -432,6 +452,7 @@ async function cargarResumen() {
     // La respuesta del resumen ya trae las tarjetas incluidas — evitamos pedirlas aparte
     renderTarjetas(data.tarjetas);
 
+    aplicarCategorias(data.categorias);
     evaluarAlertaPresupuesto();
   } catch (err) {
     contEtiquetas.innerHTML = '<div class="estado-vacio">No se pudo cargar el resumen. Revisa la URL de Apps Script.</div>';
@@ -439,30 +460,19 @@ async function cargarResumen() {
   }
 }
 
-function renderFilaEtiqueta(d) {
-  const estadoTexto = { verde: 'Dentro', amarillo: 'Alerta', rojo: 'Superado', sin_presupuesto: 'Libre' };
-  const estadoPeor = (d.estadoQ1 === 'rojo' || d.estadoQ2 === 'rojo') ? 'rojo'
-    : (d.estadoQ1 === 'amarillo' || d.estadoQ2 === 'amarillo') ? 'amarillo'
-    : (d.presupuestoMes > 0 ? 'verde' : 'sin_presupuesto');
-
-  function bloqueQ(label, gastado, presupuesto, pct, estado) {
-    const montos = presupuesto > 0 ? `${fmt(gastado)} / ${fmt(presupuesto)}` : fmt(gastado);
-    const ancho = presupuesto > 0 ? Math.min(pct, 100) : 8;
-    return `
-      <div class="quincena-bloque">
-        <div class="qlabel"><span>${label}</span><span>${montos}</span></div>
-        <div class="barra-track"><div class="barra-fill ${estado}" style="width:${ancho}%;"></div></div>
-      </div>`;
-  }
-
+function renderUltimo(m) {
+  const signo = m.tipo === 'Ingreso' ? '+' : '−';
+  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const detalle = [m.descripcion, m.metodo].filter(Boolean).map(esc).join(' · ');
   return `
-    <div class="fila-etiqueta">
-      <div class="top">
-        <span class="nombre">${d.etiqueta}</span>
-        <span class="sello ${estadoPeor}">${estadoTexto[estadoPeor]}</span>
+    <div class="flujo-fila">
+      <div class="izq">
+        <span class="etiqueta-mov">${esc(m.etiqueta)}</span>
+        <span class="fecha-mov">${esc(m.fecha)}${detalle ? ' · ' + detalle : ''}</span>
       </div>
-      ${bloqueQ('1ra quincena', d.gastoQ1, d.presupuestoQ1, d.pctQ1, d.estadoQ1)}
-      ${bloqueQ('2da quincena', d.gastoQ2, d.presupuestoQ2, d.pctQ2, d.estadoQ2)}
+      <div class="der">
+        <div class="monto-mov ${m.tipo}">${signo} ${fmt(m.valor)}</div>
+      </div>
     </div>`;
 }
 
