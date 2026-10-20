@@ -57,6 +57,16 @@
   .toggle-tipo button[data-tipo="Ingreso"].activo{border-color:var(--verde);background:var(--verde-suave);color:var(--verde);}
   .toggle-tipo button[data-tipo="Gasto"].activo{border-color:var(--gasto);background:var(--gasto-suave);color:var(--gasto);}
 
+  .metodo-opciones{display:flex;gap:8px;}
+  .metodo-opciones button{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    min-height:58px;padding:8px 4px;border-radius:8px;cursor:pointer;
+    border:2px dashed var(--paper-line);background:var(--paper);color:var(--ink-soft);
+    font-family:'Inter',sans-serif;font-size:12.5px;font-weight:700;line-height:1.2;text-align:center;
+  }
+  .metodo-opciones button small{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;}
+  .metodo-opciones button.activo{border:2px solid var(--ink);background:var(--ink);color:var(--paper);}
+
   label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.05em;}
   label:first-of-type{margin-top:0;}
   input,select{width:100%;padding:12px;border:1px solid var(--paper-line);border-radius:8px;font-family:'Inter',sans-serif;font-size:15px;background:var(--paper);color:var(--ink);}
@@ -171,12 +181,13 @@
         <label for="fecha">Fecha</label>
         <input type="date" id="fecha" required>
 
-        <label for="metodoPago">Método de pago</label>
-        <select id="metodoPago" required>
-          <option value="Efectivo/Transferencia">Efectivo o transferencia</option>
-          <option value="Bancolombia">Tarjeta crédito Bancolombia</option>
-          <option value="RappiCard">Tarjeta crédito RappiCard</option>
-        </select>
+        <label>Método de pago</label>
+        <input type="hidden" id="metodoPago" value="Efectivo/Transferencia">
+        <div class="metodo-opciones" id="metodoOpciones">
+          <button type="button" class="activo" data-metodo="Efectivo/Transferencia"><span>Efectivo o transferencia</span></button>
+          <button type="button" data-metodo="Bancolombia"><small>Tarjeta crédito</small><span>Bancolombia</span></button>
+          <button type="button" data-metodo="RappiCard"><small>Tarjeta crédito</small><span>RappiCard</span></button>
+        </div>
 
         <div class="aviso-alerta" id="avisoPresupuesto"></div>
 
@@ -315,6 +326,18 @@ function poblarEtiquetas() {
   select.innerHTML = lista.map(e => `<option value="${esc(e)}">${esc(e)}</option>`).join('');
   if (previa && lista.includes(previa)) select.value = previa;
 }
+
+// ---------- Método de pago: botones de un toque ----------
+function marcarMetodo(valor) {
+  document.getElementById('metodoPago').value = valor;
+  document.querySelectorAll('#metodoOpciones button').forEach(b => b.classList.toggle('activo', b.dataset.metodo === valor));
+}
+document.querySelectorAll('#metodoOpciones button').forEach(b => {
+  b.addEventListener('click', () => marcarMetodo(b.dataset.metodo));
+});
+document.getElementById('formMovimiento').addEventListener('reset', () => {
+  setTimeout(() => marcarMetodo('Efectivo/Transferencia'), 0);
+});
 
 document.getElementById('fecha').value = new Date().toISOString().slice(0, 10);
 
@@ -555,31 +578,4 @@ function renderTarjetas(data) {
 function slug(str) { return str.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
 
 function renderTarjeta(t) {
-  const etiquetaEstado = { verde: 'Sano', amarillo: 'Vigilar', rojo: 'Alto' }[t.estado];
-  return `
-    <div class="tarjeta-item">
-      <div class="top">
-        <span class="entidad">${t.entidad}${t.personal ? '' : ' <span style="font-size:10px;color:var(--ink-soft);">(no personal)</span>'}</span>
-        <span class="sello ${t.estado}">${t.utilizacion}% · ${etiquetaEstado}</span>
-      </div>
-      <div class="barra-track"><div class="barra-fill ${t.estado}" style="width:${Math.min(t.utilizacion, 100)}%;"></div></div>
-      <div class="tarjeta-detalle">Cupo ${fmt(t.cupo)} · Saldo ${fmt(t.saldo)} · Disponible ${fmt(t.disponible)} · Pago límite día ${t.diaLimitePago || '—'}</div>
-      <div class="tarjeta-update-label">Registrar abono (pago a la tarjeta)</div>
-      <div class="tarjeta-update abono">
-        <input type="number" id="input-abono-${slug(t.entidad)}" placeholder="Monto que abonaste">
-        <button type="button" id="btn-abono-${slug(t.entidad)}">Registrar abono</button>
-      </div>
-      <div class="tarjeta-update-label">Corregir saldo manualmente</div>
-      <div class="tarjeta-update">
-        <input type="number" id="input-tarjeta-${slug(t.entidad)}" placeholder="Nuevo saldo actual">
-        <button type="button" id="btn-tarjeta-${slug(t.entidad)}">Actualizar</button>
-      </div>
-    </div>`;
-}
-
-// ---------- Inicio ----------
-poblarEtiquetas();
-cargarResumen();
-</script>
-</body>
-</html>
+  const etiq
