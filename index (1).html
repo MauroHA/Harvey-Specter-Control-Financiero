@@ -290,10 +290,30 @@ document.querySelectorAll('.toggle-tipo button').forEach(btn => {
   });
 });
 
+// Las listas vienen de la hoja Presupuesto (vía Apps Script). Las constantes de arriba son solo respaldo.
+let listaGasto = ETIQUETAS_GASTO;
+let listaIngreso = ETIQUETAS_INGRESO;
+try {
+  const c = JSON.parse(localStorage.getItem('categoriasCache') || 'null');
+  if (c && c.gasto && c.gasto.length) listaGasto = c.gasto;
+  if (c && c.ingreso && c.ingreso.length) listaIngreso = c.ingreso;
+} catch (e) {}
+
+function aplicarCategorias(cat) {
+  if (!cat) return;
+  if (cat.gasto && cat.gasto.length) listaGasto = cat.gasto;
+  if (cat.ingreso && cat.ingreso.length) listaIngreso = cat.ingreso;
+  try { localStorage.setItem('categoriasCache', JSON.stringify({ gasto: listaGasto, ingreso: listaIngreso })); } catch (e) {}
+  poblarEtiquetas();
+}
+
 function poblarEtiquetas() {
   const select = document.getElementById('etiqueta');
-  const lista = tipoActual === 'Ingreso' ? ETIQUETAS_INGRESO : ETIQUETAS_GASTO;
-  select.innerHTML = lista.map(e => `<option value="${e}">${e}</option>`).join('');
+  const previa = select.value;
+  const lista = tipoActual === 'Ingreso' ? listaIngreso : listaGasto;
+  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  select.innerHTML = lista.map(e => `<option value="${esc(e)}">${esc(e)}</option>`).join('');
+  if (previa && lista.includes(previa)) select.value = previa;
 }
 
 document.getElementById('fecha').value = new Date().toISOString().slice(0, 10);
@@ -432,6 +452,7 @@ async function cargarResumen() {
     // La respuesta del resumen ya trae las tarjetas incluidas — evitamos pedirlas aparte
     renderTarjetas(data.tarjetas);
 
+    aplicarCategorias(data.categorias);
     evaluarAlertaPresupuesto();
   } catch (err) {
     contEtiquetas.innerHTML = '<div class="estado-vacio">No se pudo cargar el resumen. Revisa la URL de Apps Script.</div>';
