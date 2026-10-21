@@ -57,6 +57,16 @@
   .toggle-tipo button[data-tipo="Ingreso"].activo{border-color:var(--verde);background:var(--verde-suave);color:var(--verde);}
   .toggle-tipo button[data-tipo="Gasto"].activo{border-color:var(--gasto);background:var(--gasto-suave);color:var(--gasto);}
 
+  .metodo-opciones{display:flex;gap:8px;}
+  .metodo-opciones button{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    min-height:58px;padding:8px 4px;border-radius:8px;cursor:pointer;
+    border:2px dashed var(--paper-line);background:var(--paper);color:var(--ink-soft);
+    font-family:'Inter',sans-serif;font-size:12.5px;font-weight:700;line-height:1.2;text-align:center;
+  }
+  .metodo-opciones button small{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;}
+  .metodo-opciones button.activo{border:2px solid var(--ink);background:var(--ink);color:var(--paper);}
+
   label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.05em;}
   label:first-of-type{margin-top:0;}
   input,select{width:100%;padding:12px;border:1px solid var(--paper-line);border-radius:8px;font-family:'Inter',sans-serif;font-size:15px;background:var(--paper);color:var(--ink);}
@@ -171,12 +181,13 @@
         <label for="fecha">Fecha</label>
         <input type="date" id="fecha" required>
 
-        <label for="metodoPago">Método de pago</label>
-        <select id="metodoPago" required>
-          <option value="Efectivo/Transferencia">Efectivo o transferencia</option>
-          <option value="Bancolombia">Tarjeta crédito Bancolombia</option>
-          <option value="RappiCard">Tarjeta crédito RappiCard</option>
-        </select>
+        <label>Método de pago</label>
+        <input type="hidden" id="metodoPago" value="Efectivo/Transferencia">
+        <div class="metodo-opciones" id="metodoOpciones">
+          <button type="button" class="activo" data-metodo="Efectivo/Transferencia"><span>Efectivo o transferencia</span></button>
+          <button type="button" data-metodo="Bancolombia"><small>Tarjeta crédito</small><span>Bancolombia</span></button>
+          <button type="button" data-metodo="RappiCard"><small>Tarjeta crédito</small><span>RappiCard</span></button>
+        </div>
 
         <div class="aviso-alerta" id="avisoPresupuesto"></div>
 
@@ -193,7 +204,7 @@
         <div class="cifra"><div class="label">Balance</div><div class="valor" id="totalBalance">$0</div></div>
       </div>
 
-      <h3 class="subtitulo">Gastos por etiqueta · 1ra y 2da quincena</h3>
+      <h3 class="subtitulo">Último registro</h3>
       <div id="listaEtiquetas"><div class="estado-vacio">Cargando…</div></div>
     </div>
   </section>
@@ -316,6 +327,18 @@ function poblarEtiquetas() {
   if (previa && lista.includes(previa)) select.value = previa;
 }
 
+// ---------- Método de pago: botones de un toque ----------
+function marcarMetodo(valor) {
+  document.getElementById('metodoPago').value = valor;
+  document.querySelectorAll('#metodoOpciones button').forEach(b => b.classList.toggle('activo', b.dataset.metodo === valor));
+}
+document.querySelectorAll('#metodoOpciones button').forEach(b => {
+  b.addEventListener('click', () => marcarMetodo(b.dataset.metodo));
+});
+document.getElementById('formMovimiento').addEventListener('reset', () => {
+  setTimeout(() => marcarMetodo('Efectivo/Transferencia'), 0);
+});
+
 document.getElementById('fecha').value = new Date().toISOString().slice(0, 10);
 
 document.getElementById('monto').addEventListener('input', evaluarAlertaPresupuesto);
@@ -431,9 +454,9 @@ async function cargarResumen() {
     balanceEl.classList.remove('positivo', 'negativo');
     balanceEl.classList.add(data.balance >= 0 ? 'positivo' : 'negativo');
 
-    contEtiquetas.innerHTML = data.desglose.length
-      ? data.desglose.map(renderFilaEtiqueta).join('')
-      : '<div class="estado-vacio">Aún no hay gastos este mes.</div>';
+    contEtiquetas.innerHTML = (data.ultimos && data.ultimos.length)
+      ? data.ultimos.map(renderUltimo).join('')
+      : '<div class="estado-vacio">Aún no hay registros.</div>';
 
     // Caja
     document.getElementById('cajaSaldoInicial').textContent = fmt(data.saldoInicial);
@@ -460,30 +483,19 @@ async function cargarResumen() {
   }
 }
 
-function renderFilaEtiqueta(d) {
-  const estadoTexto = { verde: 'Dentro', amarillo: 'Alerta', rojo: 'Superado', sin_presupuesto: 'Libre' };
-  const estadoPeor = (d.estadoQ1 === 'rojo' || d.estadoQ2 === 'rojo') ? 'rojo'
-    : (d.estadoQ1 === 'amarillo' || d.estadoQ2 === 'amarillo') ? 'amarillo'
-    : (d.presupuestoMes > 0 ? 'verde' : 'sin_presupuesto');
-
-  function bloqueQ(label, gastado, presupuesto, pct, estado) {
-    const montos = presupuesto > 0 ? `${fmt(gastado)} / ${fmt(presupuesto)}` : fmt(gastado);
-    const ancho = presupuesto > 0 ? Math.min(pct, 100) : 8;
-    return `
-      <div class="quincena-bloque">
-        <div class="qlabel"><span>${label}</span><span>${montos}</span></div>
-        <div class="barra-track"><div class="barra-fill ${estado}" style="width:${ancho}%;"></div></div>
-      </div>`;
-  }
-
+function renderUltimo(m) {
+  const signo = m.tipo === 'Ingreso' ? '+' : '−';
+  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const detalle = [m.descripcion, m.metodo].filter(Boolean).map(esc).join(' · ');
   return `
-    <div class="fila-etiqueta">
-      <div class="top">
-        <span class="nombre">${d.etiqueta}</span>
-        <span class="sello ${estadoPeor}">${estadoTexto[estadoPeor]}</span>
+    <div class="flujo-fila">
+      <div class="izq">
+        <span class="etiqueta-mov">${esc(m.etiqueta)}</span>
+        <span class="fecha-mov">${esc(m.fecha)}${detalle ? ' · ' + detalle : ''}</span>
       </div>
-      ${bloqueQ('1ra quincena', d.gastoQ1, d.presupuestoQ1, d.pctQ1, d.estadoQ1)}
-      ${bloqueQ('2da quincena', d.gastoQ2, d.presupuestoQ2, d.pctQ2, d.estadoQ2)}
+      <div class="der">
+        <div class="monto-mov ${m.tipo}">${signo} ${fmt(m.valor)}</div>
+      </div>
     </div>`;
 }
 
