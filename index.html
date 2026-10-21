@@ -578,4 +578,31 @@ function renderTarjetas(data) {
 function slug(str) { return str.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
 
 function renderTarjeta(t) {
-  const etiq
+  const etiquetaEstado = { verde: 'Sano', amarillo: 'Vigilar', rojo: 'Alto' }[t.estado];
+  return `
+    <div class="tarjeta-item">
+      <div class="top">
+        <span class="entidad">${t.entidad}${t.personal ? '' : ' <span style="font-size:10px;color:var(--ink-soft);">(no personal)</span>'}</span>
+        <span class="sello ${t.estado}">${t.utilizacion}% · ${etiquetaEstado}</span>
+      </div>
+      <div class="barra-track"><div class="barra-fill ${t.estado}" style="width:${Math.min(t.utilizacion, 100)}%;"></div></div>
+      <div class="tarjeta-detalle">Cupo ${fmt(t.cupo)} · Saldo ${fmt(t.saldo)} · Disponible ${fmt(t.disponible)} · Pago límite día ${t.diaLimitePago || '—'}</div>
+      <div class="tarjeta-update-label">Registrar abono (pago a la tarjeta)</div>
+      <div class="tarjeta-update abono">
+        <input type="number" id="input-abono-${slug(t.entidad)}" placeholder="Monto que abonaste">
+        <button type="button" id="btn-abono-${slug(t.entidad)}">Registrar abono</button>
+      </div>
+      <div class="tarjeta-update-label">Corregir saldo manualmente</div>
+      <div class="tarjeta-update">
+        <input type="number" id="input-tarjeta-${slug(t.entidad)}" placeholder="Nuevo saldo actual">
+        <button type="button" id="btn-tarjeta-${slug(t.entidad)}">Actualizar</button>
+      </div>
+    </div>`;
+}
+
+// ---------- Inicio ----------
+poblarEtiquetas();
+cargarResumen();
+</script>
+</body>
+</html>
